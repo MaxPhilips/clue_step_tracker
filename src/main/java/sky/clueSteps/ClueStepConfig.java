@@ -1,5 +1,6 @@
 package sky.clueSteps;
 
+import lombok.Data;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
@@ -19,6 +20,19 @@ public interface ClueStepConfig extends Config
 	String ID_MEDIUM = "idMedium";
 	String ID_HARD = "idHard";
 	String ID_ELITE = "idElite";
+
+	@Data(staticConstructor = "of")
+	class Pair {
+		private final Integer min;
+		private final Integer max;
+	}
+
+	Pair STEPS_BEGINNER = new Pair(1, 3);
+	Pair STEPS_EASY = new Pair(2, 4);
+	Pair STEPS_MEDIUM = new Pair(3, 5);
+	Pair STEPS_HARD = new Pair(4, 6);
+	Pair STEPS_ELITE = new Pair(5, 7);
+	Pair STEPS_MASTER = new Pair(6, 8);
 
 	@ConfigItem(
 			keyName = "trackBeginner",

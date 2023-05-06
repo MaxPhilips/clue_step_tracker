@@ -1,11 +1,10 @@
 package sky.clueSteps;
 
 import com.google.inject.Provides;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.ItemContainerChanged;
-import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.events.*;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetID;
 import net.runelite.api.widgets.WidgetInfo;
@@ -16,8 +15,9 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
-
 import javax.inject.Inject;
+import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,13 +29,6 @@ import java.util.regex.Pattern;
 @Slf4j
 public class ClueStepPlugin extends Plugin
 {
-	private static final Pattern BEGINNER_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this beginner clue scroll\\.");
-	private static final Pattern EASY_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this easy clue scroll\\.");
-	private static final Pattern MEDIUM_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this medium clue scroll\\.");
-	private static final Pattern HARD_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this hard clue scroll\\.");
-	private static final Pattern ELITE_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this elite clue scroll\\.");
-	private static final Pattern MASTER_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this master clue scroll\\.");
-
 	@Inject
 	private ConfigManager configManager;
 
@@ -51,22 +44,127 @@ public class ClueStepPlugin extends Plugin
 	@Inject
 	private ClientThread clientThread;
 
+	private static final String WATSON = "Watson";
+	private static final Pattern GAVE_MASTER_MESSAGE = Pattern.compile("Watson hands you a master clue scroll\\.");
+	private static final Pattern BEGINNER_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this beginner clue scroll\\.");
+	private static final Pattern EASY_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this easy clue scroll\\.");
+	private static final Pattern MEDIUM_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this medium clue scroll\\.");
+	private static final Pattern HARD_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this hard clue scroll\\.");
+	private static final Pattern ELITE_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this elite clue scroll\\.");
+	private static final Pattern MASTER_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this master clue scroll\\.");
+
+	private boolean loginFlag;
+
+	private static final int WATSON_HAS_EASY_VARBIT = 5186;
+	private static final int WATSON_HAS_MEDIUM_VARBIT = 5187;
+	private static final int WATSON_HAS_HARD_VARBIT = 5188;
+	private static final int WATSON_HAS_ELITE_VARBIT = 5189;
+
+	private boolean watsonHasEasy;
+	private boolean watsonHasMedium;
+	private boolean watsonHasHard;
+	private boolean watsonHasElite;
+
+	enum ClueTier {
+		EASY,
+		MEDIUM,
+		HARD,
+		ELITE
+	}
+
+	@Data(staticConstructor = "of")
+	static
+	class WatsonChanged {
+		private final ClueStepPlugin.ClueTier tier;
+		private final boolean givenToWatson;
+	}
+
 	@Provides
 	ClueStepConfig getConfig(ConfigManager configManager)
 	{
 		return configManager.getConfig(ClueStepConfig.class);
 	}
 
+	private void printWatson()
+	{
+		String msg = MessageFormat.format("Watson clues:\nEasy: {0}\nMedium: {1}\nHard: {2}\nElite: {3}\n",
+				watsonHasEasy, watsonHasMedium, watsonHasHard, watsonHasElite);
+		System.out.println(msg);
+	}
+
 	@Override
 	protected void startUp()
 	{
 		overlayManager.add(overlay);
+
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			loginFlag = true;
+		}
 	}
 
 	@Override
-	protected void shutDown() throws Exception
+	protected void shutDown()
 	{
 		overlayManager.remove(overlay);
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		switch (event.getGameState())
+		{
+			case HOPPING:
+			case LOGGING_IN:
+				loginFlag = true;
+				break;
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick tick)
+	{
+		if (loginFlag) {
+			updateWatson();
+			loginFlag = false;
+		}
+
+		Widget npcName = client.getWidget(WidgetInfo.DIALOG_NPC_NAME);
+		Widget npcDialog = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT);
+		if (npcDialog != null && npcName != null && (npcName.getText().equals(WATSON)))
+		{
+			String npcText = Text.sanitizeMultilineText(npcDialog.getText());
+			final Matcher gaveMaster = GAVE_MASTER_MESSAGE.matcher(npcText);
+
+			if (gaveMaster.find())
+			{
+				// TODO: Mulig jeg må sjekke for master her - hvis watson er tom fra før
+				System.out.println("Watson handed over a master clue! - From game tick");
+			}
+		}
+	}
+
+	private void updateWatson()
+	{
+		System.out.println("UPDATING");
+		for (ClueTier tier : ClueTier.values()) {
+			boolean hasClue = watsonHasClue(tier);
+			switch (tier)
+			{
+				case EASY:
+					watsonHasEasy = hasClue;
+					break;
+				case MEDIUM:
+					watsonHasMedium = hasClue;
+					break;
+				case HARD:
+					watsonHasHard = hasClue;
+					break;
+				case ELITE:
+					watsonHasElite = hasClue;
+					break;
+			}
+		}
 	}
 
 	@Subscribe
@@ -204,7 +302,7 @@ public class ClueStepPlugin extends Plugin
 						break;
 				}
 
-				// Beginner and master clues all have the same ID, so can't look at an Id change to determine new clue
+				// Beginner and master clues all have the same ID, so can't look at an id change to determine new clue
 				ClueWithConfig clueType = ClueWithConfig.findItem(clueID);
 				if (clueType == null) { return ;}
 
@@ -224,43 +322,122 @@ public class ClueStepPlugin extends Plugin
 		}
 	}
 
-	@Subscribe
-	public void onItemContainerChanged(final ItemContainerChanged event) {
-		if (event.getContainerId() != InventoryID.INVENTORY.getId()) return;
+	private ArrayList<WatsonChanged> WatsonChanged()
+	{
+		boolean[] watsonState = {watsonHasEasy, watsonHasMedium, watsonHasHard, watsonHasElite};
+		updateWatson();
+		boolean[] updated = {watsonHasEasy, watsonHasMedium, watsonHasHard, watsonHasElite};
 
-		Item[] invItems = event.getItemContainer().getItems();
+		ArrayList<WatsonChanged> changed = new ArrayList<>();
 
-		for (Item item : invItems) {
-			ClueWithConfig clue = ClueWithConfig.findItem(item.getId());
-			if (clue == null) continue;
-
-			int clueID = item.getId();
-			int steps = getClueSteps(clue.getConfigKey()) + 1;
-
-			switch (clue.getType()){
-				case EASY_CLUE:
-					if (getClueSteps(ClueStepConfig.ID_EASY) != clueID) {
-						updateEasy(steps, clueID);
-					}
-					break;
-				case MEDIUM_CLUE:
-					if (getClueSteps(ClueStepConfig.ID_MEDIUM) != clueID) {
-						updateMedium(steps, clueID);
-					}
-					break;
-				case HARD_CLUE:
-					if (getClueSteps(ClueStepConfig.ID_HARD) != clueID) {
-						updateHard(steps, clueID);
-					}
-					break;
-				case ELITE_CLUE:
-					if (getClueSteps(ClueStepConfig.ID_ELITE) != clueID) {
-						updateElite(steps, clueID);
-					}
-					break;
-				default:
-					break;
+		for (int i = 0; i < watsonState.length; i++) {
+			if (watsonState[i] != updated[i])
+			{
+				changed.add(new WatsonChanged(ClueTier.values()[i], updated[i]));
 			}
 		}
+
+		return changed;
+	}
+
+	@Subscribe
+	public void onItemContainerChanged(final ItemContainerChanged event)
+	{
+		if (loginFlag || event.getContainerId() != InventoryID.INVENTORY.getId()) return;
+
+		Item[] invItems = event.getItemContainer().getItems();
+		ArrayList<WatsonChanged> watson = WatsonChanged();
+
+		if (watson.size() > 0)
+		{
+			if (!watsonHasEasy && !watsonHasMedium && !watsonHasHard && !watsonHasElite)
+			{
+				// Watson gave a master
+				updateMaster(-1);
+			}
+
+			// reset the clue given to watson
+			for (WatsonChanged w : watson) {
+				if (w.givenToWatson) {
+					switch (w.tier) {
+						case EASY:
+							updateEasy(-1, 0);
+							break;
+						case MEDIUM:
+							updateMedium(-1, 0);
+							break;
+						case HARD:
+							updateHard(-1, 0);
+							break;
+						case ELITE:
+							updateElite(-1, 0);
+							break;
+					}
+				}
+			}
+		}
+		else
+		{
+			// add to the step counter
+			for (Item item : invItems)
+			{
+				ClueWithConfig clue = ClueWithConfig.findItem(item.getId());
+				if (clue == null) continue;
+
+				int clueID = item.getId();
+				int steps = getClueSteps(clue.getConfigKey()) + 1;
+
+				switch (clue.getType())
+				{
+					case EASY_CLUE:
+						if (getClueSteps(ClueStepConfig.ID_EASY) != clueID)
+						{
+							updateEasy(steps, clueID);
+						}
+						break;
+					case MEDIUM_CLUE:
+						if (getClueSteps(ClueStepConfig.ID_MEDIUM) != clueID)
+						{
+							updateMedium(steps, clueID);
+						}
+						break;
+					case HARD_CLUE:
+						if (getClueSteps(ClueStepConfig.ID_HARD) != clueID)
+						{
+							updateHard(steps, clueID);
+						}
+						break;
+					case ELITE_CLUE:
+						if (getClueSteps(ClueStepConfig.ID_ELITE) != clueID)
+						{
+							updateElite(steps, clueID);
+						}
+						break;
+					default:
+						break;
+				}
+			}
+		}
+	}
+
+	public boolean watsonHasClue(ClueTier tier)
+	{
+		if (tier == ClueTier.EASY)
+		{
+			return client.getVarbitValue(WATSON_HAS_EASY_VARBIT) == 1;
+		}
+		else if (tier == ClueTier.MEDIUM)
+		{
+			return client.getVarbitValue(WATSON_HAS_MEDIUM_VARBIT) == 1;
+		}
+		else if (tier == ClueTier.HARD)
+		{
+			return client.getVarbitValue(WATSON_HAS_HARD_VARBIT) == 1;
+		}
+		else if (tier == ClueTier.ELITE)
+		{
+			return client.getVarbitValue(WATSON_HAS_ELITE_VARBIT) == 1;
+		}
+		return false;
 	}
 }
