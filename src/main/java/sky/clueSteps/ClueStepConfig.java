@@ -1,9 +1,12 @@
 package sky.clueSteps;
 
 import lombok.Data;
+import net.runelite.client.config.Alpha;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+
+import java.awt.*;
 
 @ConfigGroup(ClueStepConfig.GROUP)
 public interface ClueStepConfig extends Config
@@ -22,17 +25,17 @@ public interface ClueStepConfig extends Config
 	String ID_ELITE = "idElite";
 
 	@Data(staticConstructor = "of")
-	class Pair {
+	class ClueRange {
 		private final Integer min;
 		private final Integer max;
 	}
 
-	Pair STEPS_BEGINNER = new Pair(1, 3);
-	Pair STEPS_EASY = new Pair(2, 4);
-	Pair STEPS_MEDIUM = new Pair(3, 5);
-	Pair STEPS_HARD = new Pair(4, 6);
-	Pair STEPS_ELITE = new Pair(5, 7);
-	Pair STEPS_MASTER = new Pair(6, 8);
+	ClueRange STEPS_BEGINNER = new ClueRange(1, 3);
+	ClueRange STEPS_EASY = new ClueRange(2, 4);
+	ClueRange STEPS_MEDIUM = new ClueRange(3, 5);
+	ClueRange STEPS_HARD = new ClueRange(4, 6);
+	ClueRange STEPS_ELITE = new ClueRange(5, 7);
+	ClueRange STEPS_MASTER = new ClueRange(6, 8);
 
 	@ConfigItem(
 			keyName = "trackBeginner",
@@ -98,5 +101,49 @@ public interface ClueStepConfig extends Config
 	default boolean trackMaster()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+			keyName = "recolor",
+			name = "Recolor step counter",
+			description = "Recolors the step counter when the clue can be completed.",
+			position = 7
+	)
+	default boolean recolor()
+	{
+		return true;
+	}
+
+	@Alpha
+	@ConfigItem(
+			position = 8,
+			keyName = "ColorPossibly",
+			name = "Color Possibly",
+			description = "Color when next step possibly results in a casket"
+	)
+	default Color getColorPossibly() {
+		return Color.ORANGE;
+	}
+
+	@Alpha
+	@ConfigItem(
+			position = 9,
+			keyName = "ColorProbably",
+			name = "Color Probably",
+			description = "Color when next step probably results in a casket"
+	)
+	default Color getColorProbably() {
+		return Color.YELLOW;
+	}
+
+	@Alpha
+	@ConfigItem(
+			position = 10,
+			keyName = "ColorGuaranteed",
+			name = "Color Guaranteed",
+			description = "Color when next step is a guaranteed casket"
+	)
+	default Color getColorGuaranteed() {
+		return Color.GREEN;
 	}
 }

@@ -16,7 +16,6 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
 import javax.inject.Inject;
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,8 +43,6 @@ public class ClueStepPlugin extends Plugin
 	@Inject
 	private ClientThread clientThread;
 
-	private static final String WATSON = "Watson";
-	private static final Pattern GAVE_MASTER_MESSAGE = Pattern.compile("Watson hands you a master clue scroll\\.");
 	private static final Pattern BEGINNER_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this beginner clue scroll\\.");
 	private static final Pattern EASY_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this easy clue scroll\\.");
 	private static final Pattern MEDIUM_PATTERN = Pattern.compile("You have completed (\\d+) steps? on this medium clue scroll\\.");
@@ -85,13 +82,6 @@ public class ClueStepPlugin extends Plugin
 		return configManager.getConfig(ClueStepConfig.class);
 	}
 
-	private void printWatson()
-	{
-		String msg = MessageFormat.format("Watson clues:\nEasy: {0}\nMedium: {1}\nHard: {2}\nElite: {3}\n",
-				watsonHasEasy, watsonHasMedium, watsonHasHard, watsonHasElite);
-		System.out.println(msg);
-	}
-
 	@Override
 	protected void startUp()
 	{
@@ -128,25 +118,10 @@ public class ClueStepPlugin extends Plugin
 			updateWatson();
 			loginFlag = false;
 		}
-
-		Widget npcName = client.getWidget(WidgetInfo.DIALOG_NPC_NAME);
-		Widget npcDialog = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT);
-		if (npcDialog != null && npcName != null && (npcName.getText().equals(WATSON)))
-		{
-			String npcText = Text.sanitizeMultilineText(npcDialog.getText());
-			final Matcher gaveMaster = GAVE_MASTER_MESSAGE.matcher(npcText);
-
-			if (gaveMaster.find())
-			{
-				// TODO: Mulig jeg må sjekke for master her - hvis watson er tom fra før
-				System.out.println("Watson handed over a master clue! - From game tick");
-			}
-		}
 	}
 
 	private void updateWatson()
 	{
-		System.out.println("UPDATING");
 		for (ClueTier tier : ClueTier.values()) {
 			boolean hasClue = watsonHasClue(tier);
 			switch (tier)
