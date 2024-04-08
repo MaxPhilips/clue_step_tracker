@@ -531,7 +531,8 @@ enum ClueWithConfig
 			24493,
 			25790,
 			25791,
-			25792
+			25792,
+			26566
 	};
 
 	private static final int[] eliteIDs = {
