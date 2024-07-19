@@ -5,9 +5,7 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
-import net.runelite.api.widgets.Widget;
-import net.runelite.api.widgets.WidgetID;
-import net.runelite.api.widgets.WidgetInfo;
+import net.runelite.api.widgets.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -249,10 +247,11 @@ public class ClueStepPlugin extends Plugin
 
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event) {
-		if (event.getGroupId() == WidgetID.DIALOG_SPRITE_GROUP_ID) {
+		if (event.getGroupId() == InterfaceID.DIALOG_SPRITE) {
 			clientThread.invokeLater(() -> {
-				Widget sprite = client.getWidget(WidgetInfo.DIALOG_SPRITE_SPRITE);
-				int clueID = sprite.getItemId();
+				Widget sprite = client.getWidget(ComponentID.DIALOG_SPRITE_SPRITE);
+                if (sprite == null) return;
+                int clueID = sprite.getItemId();
 
 				switch (clueID){
 					case ItemID.REWARD_CASKET_BEGINNER:
