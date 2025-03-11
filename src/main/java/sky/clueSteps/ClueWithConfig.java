@@ -191,7 +191,9 @@ enum ClueWithConfig
 			25788,
 			25789,
 			28913,
-			28914
+			28914,
+			29853,
+			29854
 	};
 
 	private static final int[] mediumIDs = {
@@ -355,7 +357,9 @@ enum ClueWithConfig
 			25784,
 			28907, // this is a challenge scroll, it does not follow normal clue standards
 			28908,
-			28909
+			28909,
+			29857,
+			29858
 	};
 
 	private static final int[] hardIDs = {
@@ -540,7 +544,8 @@ enum ClueWithConfig
 			26566,
 			28915,
 			28916,
-			28918
+			28918,
+			29859
 	};
 
 	private static final int[] eliteIDs = {
@@ -673,7 +678,9 @@ enum ClueWithConfig
 			25787,
 			28910,
 			28911,
-			28912
+			28912,
+			29855,
+			29856
 	};
 
 	private static final int[] masterIDs = {
